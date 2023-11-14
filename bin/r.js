@@ -27183,6 +27183,7 @@ function (lang,   logger,   envOptimize,        file,           parse,
                 }
 
                 optConfig = config[optimizerName] || {};
+				optConfig.minifyES6 = config.minifyES6;
                 if (config.generateSourceMaps) {
                     optConfig.generateSourceMaps = !!config.generateSourceMaps;
                     optConfig._buildSourceMap = config._buildSourceMap;
@@ -27392,29 +27393,33 @@ function (lang,   logger,   envOptimize,        file,           parse,
                 try {
                     //var tempContents = fileContents.replace(/\/\/\# sourceMappingURL=.*$/, '');
                     result = uglify.minify(fileContents, uconfig, baseName + '.src.js');
-                    if (uconfig.outSourceMap && result.map) {
-                        resultMap = result.map;
-                        if (!existingMap && !config._buildSourceMap) {
-                            file.saveFile(outFileName + '.src.js', fileContents);
-                        }
-
-                        fileContents = result.code;
-
-                        if (config._buildSourceMap) {
-                            config._buildSourceMap = resultMap;
-                        } else {
-                            file.saveFile(outFileName + '.map', resultMap);
-                        }
-                    } else {
-                        fileContents = result.code;
-                    }
                 } catch (e) {
-                    var errorString = e.toString();
-                    var isSyntaxError = /SyntaxError/.test(errorString);
-                    throw new Error('Cannot uglify file: ' + fileName +
+					if(uconfig.minifyES6){
+						result = uconfig.minifyES6(fileContents, uconfig, baseName + '.src.js');
+					}else{
+						var errorString = e.toString();
+						var isSyntaxError = /SyntaxError/.test(errorString);
+						throw new Error('Cannot uglify file: ' + fileName +
                                     '. Skipping it. Error is:\n' + errorString +
                                   (isSyntaxError ? '\n\n' + es5PlusGuidance : ''));
+					}
                 }
+				if (uconfig.outSourceMap && result.map) {
+					resultMap = result.map;
+					if (!existingMap && !config._buildSourceMap) {
+						file.saveFile(outFileName + '.src.js', fileContents);
+					}
+
+					fileContents = result.code;
+
+					if (config._buildSourceMap) {
+						config._buildSourceMap = resultMap;
+					} else {
+						file.saveFile(outFileName + '.map', resultMap);
+					}
+				} else {
+					fileContents = result.code;
+				}
                 return fileContents;
             }
         }
